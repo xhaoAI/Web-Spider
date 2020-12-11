@@ -314,9 +314,14 @@ class CrawlBaidu(CrawlBase):
         WARNING
             APP APPLICATION IS BANNED
         '''
-        _url='http://api.map.baidu.com/api_roadinfo/v1/track?point_list=' \
-             '[{"height":1,"loc_time":{},"coord_type_input":{},' \
-             '"latitude":{},"longitude":{}}]&range={}&ak={}'.format(loc_time,coord_type_input,lat,lng,range,self.baidu_ak)
+        his=[{"height":1,
+              "loc_time":loc_time,
+              "coord_type_input":coord_type_input,
+              "latitude":lat,
+              "longitude":lng}]
+        jsonstr = json.dumps(his)
+        _url='http://api.map.baidu.com/api_roadinfo/v1/track?point_list={}&range={}&ak={}'.format(jsonstr,range,self.baidu_ak)
+
         return
 
 class CrawlAmap(CrawlBase):
