@@ -2,7 +2,7 @@
 # @author: Kevin Zhang
 # @date: 2020-11
 '''
-    This file help you get infomation you need from baidu map or amap by official API
+    This file will help you get infomation you need from baidu map or amap by official API
     - Baidu: http://lbsyun.baidu.com/index.php?title=webapi
     - Amap: https://lbs.amap.com/api/webservice/summary
 
@@ -122,8 +122,6 @@ class CrawlBase(object):
         return Point(arr['wgs_lng'],arr['wgs_lat'])
 
     def target_map(self,target_poi):
-        # ditie = gpd.read_file('./成都地铁/成都地铁/成都地铁_busstops.shp')
-        # route = gpd.read_file('./成都地铁/成都地铁/成都地铁_buslines.shp')
         place = gpd.GeoDataFrame([Point(self.location[1], self.location[0])])
         place.columns = ['geometry']
         G = ox.graph_from_point(center_point=(self.location[0], self.location[1]), dist=2000, network_type='drive') # dist
