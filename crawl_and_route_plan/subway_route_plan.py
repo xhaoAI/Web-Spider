@@ -17,6 +17,7 @@ from tqdm import tqdm
 from collections import defaultdict
 import pickle
 import itertools
+from selenium import webdriver
 from geopy.distance import geodesic
 
 class Scrapy_and_Plan:
@@ -30,9 +31,28 @@ class Scrapy_and_Plan:
         self.user_agent='Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_8; en-us) AppleWebKit/534.50 ' \
                    '(KHTML, like Gecko) Version/5.1 Safari/534.50'
         self.headers = {'User-Agent': self.user_agent}
+        self.chrome=r'D:\Anaconda\Scripts\chromedriver.exe'
 
-    def spyder(self):
-        #获得武汉的地铁信息
+    def spyder_by_selenium(self):
+        print('正在爬取{}地铁信息...'.format(self.city))
+        url='http://{}.bendibao.com/ditie/linemap.shtml'.format(self.city_code)
+        driver = webdriver.Chrome(self.chrome)
+        driver.implicitly_wait(5)
+        driver.get(url)
+        ele_totals = driver.find_elements_by_css_selector('.s-main .line-list')
+        df = pd.DataFrame(columns=['name', 'site'])
+        for ele_line in tqdm(ele_totals):
+            line_name = ele_line.find_element_by_css_selector('.line-list a').text.replace('线路图', '')
+            # line_names = driver.find_elements_by_css_selector('div[class="wrap"]')
+            stations = ele_line.find_elements_by_css_selector('a[class="link"]')
+            for station in stations:
+                longitude, latitude = self.get_location(station.text)
+                temp = {'name': station.text, 'site': line_name, 'longitude': longitude, 'latitude': latitude}
+                df = df.append(temp, ignore_index=True)
+        driver.quit()
+        df.to_excel('./data/{}_subway.xlsx'.format(self.city_code), index=False)
+
+    def spyder_by_bs4(self):
         print('正在爬取{}地铁信息...'.format(self.city))
         url='http://{}.bendibao.com/ditie/linemap.shtml'.format(self.city_code)
         user_agent='Opera/9.80 (Macintosh; Intel Mac OS X 10.6.8; U; en) Presto/2.8.131 Version/11.11'
@@ -50,7 +70,7 @@ class Scrapy_and_Plan:
                 longitude,latitude = self.get_location(station_name)
                 temp={'name':station_name,'site':title,'longitude':longitude,'latitude':latitude}
                 df =df.append(temp,ignore_index=True)
-        df.to_excel('./{}_subway.xlsx'.format(self.city_code),index=False)
+        df.to_excel('./data/{}_subway.xlsx'.format(self.city_code),index=False)
 
     def get_location(self,keyword):
         #获得经纬度
@@ -73,7 +93,7 @@ class Scrapy_and_Plan:
 
     def get_graph(self):
         print('正在创建pickle文件...')
-        data=pd.read_excel('./{}_subway.xlsx'.format(self.city_code))
+        data=pd.read_excel('./data/{}_subway.xlsx'.format(self.city_code))
         #创建点之间的距离
         graph=defaultdict(dict)
         for i in range(data.shape[0]):
@@ -89,7 +109,7 @@ class Scrapy_and_Plan:
                     distance = self.compute_distance(longitude1,latitude1,longitude2,latitude2)
                     graph[name1][name2]=distance
                     graph[name2][name1]=distance
-        output=open('{}_graph.pkl'.format(self.city_code),'wb')
+        output=open('./data/{}_graph.pkl'.format(self.city_code),'wb')
         pickle.dump(graph,output)
 
     #找到开销最小的节点
@@ -147,7 +167,7 @@ class Scrapy_and_Plan:
         return shortest_path
 
     def subway_line(self,start,end):
-        file=open('{}_graph.pkl'.format(self.city_code),'rb')
+        file=open('./data/{}_graph.pkl'.format(self.city_code),'rb')
         graph=pickle.load(file)
         #创建点之间的距离
         #现在我们有了各个地铁站之间的距离存储在graph
@@ -183,14 +203,14 @@ class Scrapy_and_Plan:
 
 
 if __name__ == '__main__':
-    sp=Scrapy_and_Plan(city='上海',city_code='sh',site1='昌吉东路',site2='迪士尼')
-    if not os.path.exists('./{}_subway.xlsx'.format(sp.city)):
-        sp.spyder()
-    if not os.path.exists('./{}_graph.pkl'.format(sp.city_code)):
+    sp=Scrapy_and_Plan(city='杭州',city_code='hz',site1='湘湖',site2='下沙江滨') # 请修改
+    if not os.path.exists('./data/{}_subway.xlsx'.format(sp.city_code)):
+        sp.spyder_by_selenium()
+    if not os.path.exists('./data/{}_graph.pkl'.format(sp.city_code)):
         sp.get_graph()
     longitude1, latitude1 = sp.get_location(sp.site1)
     longitude2, latitude2 = sp.get_location(sp.site2)
-    data = pd.read_excel('./{}_subway.xlsx'.format(sp.city_code))
+    data = pd.read_excel('./data/{}_subway.xlsx'.format(sp.city_code))
     # 求最近的地铁站
     start = sp.get_nearest_subway(data, longitude1, latitude1)
     end = sp.get_nearest_subway(data, longitude2, latitude2)
